@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 5000;
 
 // ✅ Enable CORS for frontend domain and local dev
 app.use(cors({
-  origin: ['http://localhost:3000', 'https://gainwisdom.in'],
+  origin: ['http://localhost:3000', 'https://gainwissdom.in'],
   methods: ['GET', 'POST', 'DELETE'],
   credentials: true,
 }));
