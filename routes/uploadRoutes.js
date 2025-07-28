@@ -3,9 +3,9 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const router = express.Router();
-const UploadedImage = require('../models/uploads'); // ✅ Import Mongoose model
+const UploadedImage = require('../models/uploads'); // ✅ MongoDB model
 
-// ========== Create upload folder dynamically based on category ==========
+// ========== Dynamic Folder Creation ==========
 const getUploadPath = (category) => {
   const baseDir = path.join(__dirname, `../uploads/${category}`);
   if (!fs.existsSync(baseDir)) {
@@ -14,7 +14,7 @@ const getUploadPath = (category) => {
   return baseDir;
 };
 
-// ========== Multer Storage Config ==========
+// ========== Multer Storage ==========
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const category = req.query.category;
@@ -30,6 +30,7 @@ const storage = multer.diskStorage({
   },
 });
 
+// ========== File Filter ==========
 const fileFilter = (req, file, cb) => {
   const allowedTypes = /jpeg|jpg|png/;
   const ext = path.extname(file.originalname).toLowerCase();
@@ -46,7 +47,6 @@ const upload = multer({ storage, fileFilter });
 router.post('/', upload.single('image'), async (req, res) => {
   const category = req.query.category;
 
-  // ✅ Validate required fields
   if (!req.file) {
     return res.status(400).json({ error: 'No file uploaded' });
   }
@@ -64,19 +64,19 @@ router.post('/', upload.single('image'), async (req, res) => {
       category,
     });
 
-    await newImage.save(); // ✅ Save to MongoDB
+    await newImage.save();
 
     res.json({
       message: 'Image uploaded and saved to DB successfully',
       imageUrl,
     });
   } catch (error) {
-    console.error('❌ DB Save Error:', error); // ✅ Show full error
+    console.error('❌ DB Save Error:', error);
     res.status(500).json({ error: 'Failed to save image in DB', details: error.message });
   }
 });
 
-// ========== Get All Uploaded Images from MongoDB ==========
+// ========== List Images ==========
 router.get('/list', async (req, res) => {
   try {
     const images = await UploadedImage.find({});
@@ -102,10 +102,10 @@ router.delete('/delete', async (req, res) => {
   const filePath = path.join(__dirname, `../uploads/${category}/${decodedFilename}`);
 
   try {
-    // Delete file from disk
-    fs.unlinkSync(filePath);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath); // ✅ Safe synchronous deletion
+    }
 
-    // Delete from DB
     await UploadedImage.deleteOne({ filename: decodedFilename });
 
     res.json({ message: 'Image deleted from disk and DB successfully' });

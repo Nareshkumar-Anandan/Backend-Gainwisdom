@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const Video = require('../models/video'); // ✅ Import Mongoose model
+const Video = require('../models/video');
 
 // GET all videos
 router.get('/', async (req, res) => {
@@ -29,7 +29,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-// DELETE a video by ID
+// DELETE a video by MongoDB _id
 router.delete('/:id', async (req, res) => {
   try {
     const deleted = await Video.findByIdAndDelete(req.params.id);
@@ -39,6 +39,25 @@ router.delete('/:id', async (req, res) => {
     res.json({ message: 'Video deleted', deleted });
   } catch (error) {
     res.status(500).json({ error: 'Failed to delete video' });
+  }
+});
+
+// ✅ DELETE a video by link (for your AdminPanel.jsx)
+router.delete('/delete', async (req, res) => {
+  const { link } = req.body;
+
+  if (!link?.trim()) {
+    return res.status(400).json({ error: 'Link is required for deletion' });
+  }
+
+  try {
+    const deleted = await Video.findOneAndDelete({ link: link.trim() });
+    if (!deleted) {
+      return res.status(404).json({ error: 'Video not found' });
+    }
+    res.json({ message: 'Video deleted by link', deleted });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete video by link' });
   }
 });
 
