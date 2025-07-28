@@ -4,7 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const router = express.Router();
 const mongoose = require('mongoose');
-const UploadedImage = require('../models/uploadedImage');
+const UploadedImage = require('../models/uploads'); // ✅ Import Mongoose model
 
 // ========== Create upload folder dynamically based on category ==========
 const getUploadPath = (category) => {
