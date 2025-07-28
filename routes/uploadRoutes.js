@@ -3,7 +3,6 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const router = express.Router();
-const mongoose = require('mongoose');
 const UploadedImage = require('../models/uploads'); // ✅ Import Mongoose model
 
 // ========== Create upload folder dynamically based on category ==========
@@ -46,7 +45,15 @@ const upload = multer({ storage, fileFilter });
 // ========== Upload Image ==========
 router.post('/', upload.single('image'), async (req, res) => {
   const category = req.query.category;
-  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+  // ✅ Validate required fields
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
+
+  if (!category || !['social', 'institution'].includes(category)) {
+    return res.status(400).json({ error: 'Invalid or missing category' });
+  }
 
   const imageUrl = `https://gainwissdom.onrender.com/uploads/${category}/${req.file.filename}`;
 
@@ -56,14 +63,16 @@ router.post('/', upload.single('image'), async (req, res) => {
       url: imageUrl,
       category,
     });
-    await newImage.save();
+
+    await newImage.save(); // ✅ Save to MongoDB
 
     res.json({
       message: 'Image uploaded and saved to DB successfully',
       imageUrl,
     });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to save image in DB' });
+    console.error('❌ DB Save Error:', error); // ✅ Show full error
+    res.status(500).json({ error: 'Failed to save image in DB', details: error.message });
   }
 });
 
@@ -76,6 +85,7 @@ router.get('/list', async (req, res) => {
 
     res.json({ social, institution });
   } catch (err) {
+    console.error('❌ Fetch Error:', err);
     res.status(500).json({ error: 'Failed to fetch images from DB' });
   }
 });
@@ -100,7 +110,7 @@ router.delete('/delete', async (req, res) => {
 
     res.json({ message: 'Image deleted from disk and DB successfully' });
   } catch (err) {
-    console.error('❌ Error deleting file:', err);
+    console.error('❌ Delete Error:', err);
     res.status(500).json({ error: 'Failed to delete image' });
   }
 });
