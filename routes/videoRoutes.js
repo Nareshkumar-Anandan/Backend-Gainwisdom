@@ -43,7 +43,9 @@ router.delete('/:id', async (req, res) => {
 });
 
 // ✅ DELETE a video by link (for your AdminPanel.jsx)
-router.delete('/delete', async (req, res) => {
+// ✅ DELETE a video by link (updated to POST for safety)
+// Change from DELETE to POST
+router.post('/delete', async (req, res) => {
   const { link } = req.body;
 
   if (!link?.trim()) {
@@ -60,5 +62,7 @@ router.delete('/delete', async (req, res) => {
     res.status(500).json({ error: 'Failed to delete video by link' });
   }
 });
+
+
 
 module.exports = router;
