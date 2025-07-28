@@ -3,6 +3,8 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const router = express.Router();
+const mongoose = require('mongoose');
+const UploadedImage = require('../models/UploadedImage');
 
 // ========== Create upload folder dynamically based on category ==========
 const getUploadPath = (category) => {
@@ -21,7 +23,6 @@ const storage = multer.diskStorage({
     cb(null, uploadPath);
   },
   filename: function (req, file, cb) {
-    // Sanitize and timestamp filename
     const sanitizedName = file.originalname
       .replace(/\s+/g, '-')
       .replace(/[^\w.-]/g, '');
@@ -42,72 +43,66 @@ const fileFilter = (req, file, cb) => {
 
 const upload = multer({ storage, fileFilter });
 
-
 // ========== Upload Image ==========
-router.post('/', upload.single('image'), (req, res) => {
+router.post('/', upload.single('image'), async (req, res) => {
   const category = req.query.category;
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
-  res.json({
-    message: 'Image uploaded successfully',
-    imageUrl: `https://gainwissdom.onrender.com/uploads/${category}/${req.file.filename}`
-,
-  });
+  const imageUrl = `https://gainwissdom.onrender.com/uploads/${category}/${req.file.filename}`;
+
+  try {
+    const newImage = new UploadedImage({
+      filename: req.file.filename,
+      url: imageUrl,
+      category,
+    });
+    await newImage.save();
+
+    res.json({
+      message: 'Image uploaded and saved to DB successfully',
+      imageUrl,
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to save image in DB' });
+  }
 });
 
+// ========== Get All Uploaded Images from MongoDB ==========
+router.get('/list', async (req, res) => {
+  try {
+    const images = await UploadedImage.find({});
+    const social = images.filter(img => img.category === 'social');
+    const institution = images.filter(img => img.category === 'institution');
 
-// ========== List Images ==========
-router.get('/list', (req, res) => {
-  const baseDir = path.join(__dirname, '../uploads');
-  const socialDir = path.join(baseDir, 'social');
-  const institutionDir = path.join(baseDir, 'institution');
-
-  const readFiles = (dir) => {
-    return fs.existsSync(dir)
-      ? fs.readdirSync(dir).filter(file => /\.(jpg|jpeg|png)$/i.test(file))
-      : [];
-  };
-
-  const social = readFiles(socialDir);
-  const institution = readFiles(institutionDir);
-
-  res.json({
-    social,
-    institution,
-  });
+    res.json({ social, institution });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch images from DB' });
+  }
 });
-
 
 // ========== Delete Image ==========
-router.delete('/delete', (req, res) => {
+router.delete('/delete', async (req, res) => {
   const { category, filename } = req.query;
 
   if (!category || !filename) {
     return res.status(400).json({ error: 'Category and filename are required' });
   }
 
-  const decodedFilename = decodeURIComponent(filename); // Important!
+  const decodedFilename = decodeURIComponent(filename);
   const filePath = path.join(__dirname, `../uploads/${category}/${decodedFilename}`);
 
-  console.log('🗑️ Deletion request for:', filePath);
+  try {
+    // Delete file from disk
+    fs.unlinkSync(filePath);
 
-  fs.access(filePath, fs.constants.F_OK, (accessErr) => {
-    if (accessErr) {
-      console.log('⚠️ File not found:', filePath);
-      return res.status(404).json({ error: 'File not found' });
-    }
+    // Delete from DB
+    await UploadedImage.deleteOne({ filename: decodedFilename });
 
-    fs.unlink(filePath, (err) => {
-      if (err) {
-        console.error('❌ Error deleting file:', err); // This is where your error is
-        return res.status(500).json({ error: 'Error deleting file' });
-      }
-
-      console.log('✅ File deleted:', filePath);
-      res.json({ message: 'File deleted successfully' });
-    });
-  });
+    res.json({ message: 'Image deleted from disk and DB successfully' });
+  } catch (err) {
+    console.error('❌ Error deleting file:', err);
+    res.status(500).json({ error: 'Failed to delete image' });
+  }
 });
-
 
 module.exports = router;
