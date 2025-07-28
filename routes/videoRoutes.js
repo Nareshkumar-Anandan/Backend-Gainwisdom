@@ -3,7 +3,7 @@ const router = express.Router();
 const Video = require('../models/video'); // ✅ Import Mongoose model
 
 // GET all videos
-router.get('/videos', async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const videos = await Video.find().sort({ createdAt: -1 });
     res.json(videos);
@@ -13,7 +13,7 @@ router.get('/videos', async (req, res) => {
 });
 
 // POST a new video
-router.post('/videos', async (req, res) => {
+router.post('/', async (req, res) => {
   const { link, description } = req.body;
 
   if (!link?.trim() || !description?.trim()) {
@@ -30,7 +30,7 @@ router.post('/videos', async (req, res) => {
 });
 
 // DELETE a video by ID
-router.delete('/videos/:id', async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     const deleted = await Video.findByIdAndDelete(req.params.id);
     if (!deleted) {
